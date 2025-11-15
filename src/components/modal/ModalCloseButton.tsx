@@ -1,4 +1,8 @@
-export const ModalCloseButton = ({ onClick }: any) => (
+type ModalCloseButtonProps = {
+  onClick: () => void;
+};
+
+export const ModalCloseButton = ({ onClick }: ModalCloseButtonProps) => (
   <button
     className="absolute top-4 right-4 p-2 rounded-full hover:bg-gray-100"
     onClick={onClick}
