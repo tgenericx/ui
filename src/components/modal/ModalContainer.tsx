@@ -7,7 +7,10 @@ type ModalContainerProps = {
   className?: string;
   size: "small" | "medium" | "large" | "full";
   children: React.ReactNode;
-  [key: string]: any;
+  onTouchStart?: React.TouchEventHandler<HTMLDivElement>;
+  onTouchMove?: React.TouchEventHandler<HTMLDivElement>;
+  onTouchEnd?: React.TouchEventHandler<HTMLDivElement>;
+  onMouseDown?: React.MouseEventHandler<HTMLDivElement>;
 };
 
 export const ModalContainer = ({
@@ -32,8 +35,8 @@ export const ModalContainer = ({
     isOpen && !isAnimating
       ? `translateY(${dragY}px)`
       : isOpen
-      ? "translateY(0)"
-      : "translateY(100%)";
+        ? "translateY(0)"
+        : "translateY(100%)";
 
   return (
     <div
