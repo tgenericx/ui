@@ -1,5 +1,5 @@
 {
-  "name": "@buddy/ui",
+  "name": "@nahnah/ui",
   "version": "0.1.0",
   "main": "dist/index.cjs",
   "module": "dist/index.js",
