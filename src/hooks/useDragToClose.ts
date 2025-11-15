@@ -6,16 +6,18 @@ interface DragOptions {
   onClose?: () => void;
 }
 
+import { useCallback, useRef, useState, useEffect } from "react";
+
+interface DragOptions {
+  dismissable: boolean;
+  threshold: number;
+  onClose?: () => void;
+}
+
 export const useDragToClose = ({ dismissable, threshold, onClose }: DragOptions) => {
   const [isDragging, setIsDragging] = useState(false);
   const [dragY, setDragY] = useState(0);
   const startYRef = useRef(0);
-
-  const onStart = useCallback((clientY: number) => {
-    if (!dismissable) return;
-    setIsDragging(true);
-    startYRef.current = clientY;
-  }, [dismissable]);
 
   const onMove = useCallback((clientY: number) => {
     if (!isDragging || !dismissable) return;
@@ -31,16 +33,35 @@ export const useDragToClose = ({ dismissable, threshold, onClose }: DragOptions)
     setIsDragging(false);
   }, [isDragging, dismissable, dragY, threshold, onClose]);
 
+  const onStart = useCallback((clientY: number) => {
+    if (!dismissable) return;
+    setIsDragging(true);
+    startYRef.current = clientY;
+  }, [dismissable]);
+
+  useEffect(() => {
+    const handleMouseMove = (e: MouseEvent) => onMove(e.clientY);
+    const handleMouseUp = () => onEnd();
+
+    if (isDragging) {
+      window.addEventListener("mousemove", handleMouseMove);
+      window.addEventListener("mouseup", handleMouseUp);
+    }
+
+    return () => {
+      window.removeEventListener("mousemove", handleMouseMove);
+      window.removeEventListener("mouseup", handleMouseUp);
+    };
+  }, [isDragging, onMove, onEnd]);
+
   return {
     dragY,
     isDragging,
     bind: {
       onTouchStart: (e: React.TouchEvent) => onStart(e.touches[0].clientY),
       onTouchMove: (e: React.TouchEvent) => onMove(e.touches[0].clientY),
-      onTouchEnd: () => onEnd(),
+      onTouchEnd: onEnd,
       onMouseDown: (e: React.MouseEvent) => onStart(e.clientY),
-      onMouseMove: (e: React.MouseEvent) => onMove(e.clientY),
-      onMouseUp: () => onEnd(),
     }
   };
 };
