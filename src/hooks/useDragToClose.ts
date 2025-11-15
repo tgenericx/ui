@@ -1,67 +1,103 @@
-import { useCallback, useRef, useState } from "react";
+import { useState, useRef, useCallback } from 'react';
+import { UseDragToCloseProps, DragState } from '../types/modal';
 
-interface DragOptions {
-  dismissable: boolean;
-  threshold: number;
-  onClose?: () => void;
-}
+export const useDragToClose = ({ dismissable, threshold, onClose }: UseDragToCloseProps) => {
+  const [dragState, setDragState] = useState<DragState>({
+    dragY: 0,
+    isDragging: false,
+    startY: 0
+  });
 
-import { useCallback, useRef, useState, useEffect } from "react";
+  const dragStartYRef = useRef(0);
+  const lastYRef = useRef(0);
+  const velocityRef = useRef(0);
 
-interface DragOptions {
-  dismissable: boolean;
-  threshold: number;
-  onClose?: () => void;
-}
-
-export const useDragToClose = ({ dismissable, threshold, onClose }: DragOptions) => {
-  const [isDragging, setIsDragging] = useState(false);
-  const [dragY, setDragY] = useState(0);
-  const startYRef = useRef(0);
-
-  const onMove = useCallback((clientY: number) => {
-    if (!isDragging || !dismissable) return;
-    const deltaY = clientY - startYRef.current;
-    if (deltaY > 0) setDragY(deltaY * 0.9);
-  }, [isDragging, dismissable]);
-
-  const onEnd = useCallback(() => {
-    if (!isDragging || !dismissable) return;
-    const shouldClose = dragY > threshold;
-    if (shouldClose) onClose?.();
-    else setDragY(0);
-    setIsDragging(false);
-  }, [isDragging, dismissable, dragY, threshold, onClose]);
-
-  const onStart = useCallback((clientY: number) => {
+  const handleDragStart = useCallback((clientY: number) => {
     if (!dismissable) return;
-    setIsDragging(true);
-    startYRef.current = clientY;
+    
+    setDragState({
+      dragY: 0,
+      isDragging: true,
+      startY: clientY
+    });
+    dragStartYRef.current = clientY;
+    lastYRef.current = clientY;
+    velocityRef.current = 0;
   }, [dismissable]);
 
-  useEffect(() => {
-    const handleMouseMove = (e: MouseEvent) => onMove(e.clientY);
-    const handleMouseUp = () => onEnd();
-
-    if (isDragging) {
-      window.addEventListener("mousemove", handleMouseMove);
-      window.addEventListener("mouseup", handleMouseUp);
+  const handleDragMove = useCallback((clientY: number) => {
+    if (!dragState.isDragging || !dismissable) return;
+    
+    const deltaY = clientY - dragState.startY;
+    const timeDelta = 16;
+    velocityRef.current = (clientY - lastYRef.current) / timeDelta;
+    lastYRef.current = clientY;
+    
+    if (deltaY > 0) {
+      const resistance = Math.min(1, 1 - deltaY / 1000);
+      setDragState(prev => ({ ...prev, dragY: deltaY * resistance }));
     }
+  }, [dragState.isDragging, dragState.startY, dismissable]);
 
-    return () => {
-      window.removeEventListener("mousemove", handleMouseMove);
-      window.removeEventListener("mouseup", handleMouseUp);
-    };
-  }, [isDragging, onMove, onEnd]);
+  const handleDragEnd = useCallback(() => {
+    if (!dragState.isDragging || !dismissable) return;
+    
+    const shouldClose = dragState.dragY > threshold || velocityRef.current > 0.5;
+    
+    if (shouldClose) {
+      onClose?.();
+    }
+    
+    setDragState({
+      dragY: 0,
+      isDragging: false,
+      startY: 0
+    });
+  }, [dragState.isDragging, dragState.dragY, dismissable, threshold, onClose]);
+
+  // Touch handlers
+  const handleTouchStart = useCallback((e: React.TouchEvent) => {
+    const touch = e.touches[0];
+    handleDragStart(touch.clientY);
+  }, [handleDragStart]);
+
+  const handleTouchMove = useCallback((e: React.TouchEvent) => {
+    const touch = e.touches[0];
+    handleDragMove(touch.clientY);
+  }, [handleDragMove]);
+
+  const handleTouchEnd = useCallback(() => {
+    handleDragEnd();
+  }, [handleDragEnd]);
+
+  // Mouse handlers
+  const handleMouseDown = useCallback((e: React.MouseEvent) => {
+    handleDragStart(e.clientY);
+  }, [handleDragStart]);
+
+  useEffect(() => {
+    if (dragState.isDragging) {
+      const handleMouseMove = (e: MouseEvent) => handleDragMove(e.clientY);
+      const handleMouseUp = () => handleDragEnd();
+
+      window.addEventListener('mousemove', handleMouseMove);
+      window.addEventListener('mouseup', handleMouseUp);
+      
+      return () => {
+        window.removeEventListener('mousemove', handleMouseMove);
+        window.removeEventListener('mouseup', handleMouseUp);
+      };
+    }
+  }, [dragState.isDragging, handleDragMove, handleDragEnd]);
 
   return {
-    dragY,
-    isDragging,
+    dragY: dragState.dragY,
+    isDragging: dragState.isDragging,
     bind: {
-      onTouchStart: (e: React.TouchEvent) => onStart(e.touches[0].clientY),
-      onTouchMove: (e: React.TouchEvent) => onMove(e.touches[0].clientY),
-      onTouchEnd: onEnd,
-      onMouseDown: (e: React.MouseEvent) => onStart(e.clientY),
+      onTouchStart: handleTouchStart,
+      onTouchMove: handleTouchMove,
+      onTouchEnd: handleTouchEnd,
+      onMouseDown: handleMouseDown,
     }
   };
 };

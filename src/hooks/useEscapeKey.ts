@@ -1,13 +1,14 @@
-import { useEffect } from "react";
+import { useEffect } from 'react';
 
+export const useEscapeKey = (isEnabled: boolean, onClose?: () => void) => {
+  useEffect(() => {
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && isEnabled) {
+        onClose?.();
+      }
+    };
 
-export const useEscapeKey = (active: boolean, onClose?: () => void) => {
-useEffect(() => {
-if (!active) return;
-const handler = (e: KeyboardEvent) => {
-if (e.key === "Escape") onClose?.();
-};
-window.addEventListener("keydown", handler);
-return () => window.removeEventListener("keydown", handler);
-}, [active, onClose]);
+    window.addEventListener('keydown', handleEscape);
+    return () => window.removeEventListener('keydown', handleEscape);
+  }, [isEnabled, onClose]);
 };
